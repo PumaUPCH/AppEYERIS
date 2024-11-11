@@ -22,6 +22,7 @@ fastapi==0.115.0
 filelock==3.16.1
 firebase-admin==6.5.0
 Flask==3.0.0
+flet==0.24.1
 flet-core==0.24.1
 flet-runtime==0.24.1
 fonttools==4.44.0
