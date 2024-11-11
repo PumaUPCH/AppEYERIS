@@ -7,6 +7,8 @@ import openpyxl
 import shutil
 import os
 
+##Edit
+
 ruta_logo = "https://drive.google.com/uc?export=view&id=1L2jsbl4SpCQqVdQUBwPlycujtR37mY45"
 ruta_imagen_doctor = "https://drive.google.com/uc?export=view&id=1yUfCLkwKjkegmqwUEiYfYOFwIYVHqXeg"
 ruta_imagen_semicirculo = "https://drive.google.com/uc?export=view&id=1E-fWlLo0IqTI6kOjZOtIaL15NFGRXzCs"
