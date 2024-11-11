@@ -4,5 +4,6 @@ services:
     env: python
     buildCommand: "pip install -r requirements.txt"
     startCommand: "flet App.py"
+    port: 8080
     installCommands:
       - apt-get update && apt-get install -y libmpv1
