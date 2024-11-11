@@ -116,7 +116,7 @@ types-python-dateutil==2.9.0.20240906
 typing_extensions==4.12.2
 tzdata==2023.3
 uritemplate==4.1.1
-urllib3==2.2.3
+urllib3==1.26.20
 uvicorn==0.30.6
 watchdog==4.0.2
 watchfiles==0.24.0
