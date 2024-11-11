@@ -707,4 +707,4 @@ def main(page: ft.Page):
     page.views.append(inicio())
     page.update()
 
-ft.app(target=main, port=int(os.environ.get("PORT", 8000)))
+ft.app(target=main, port=int(os.environ.get("PORT", 10000)))
