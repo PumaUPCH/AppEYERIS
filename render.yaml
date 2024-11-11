@@ -1,0 +1,8 @@
+services:
+  - type: web
+    name: tu-nombre-de-servicio
+    env: python
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "flet App.py"
+    installCommands:
+      - apt-get update && apt-get install -y libmpv1
