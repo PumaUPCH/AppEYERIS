@@ -12,6 +12,7 @@ cookiecutter==2.6.0
 cryptography==43.0.3
 et_xmlfile==2.0.0
 fastapi==0.115.4
+flet==0.24.1
 flet-core==0.24.1
 flet-runtime==0.24.1
 gcloud==0.18.3
