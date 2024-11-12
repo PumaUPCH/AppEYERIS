@@ -7,11 +7,11 @@ import openpyxl
 import shutil
 import os
 
-ruta_logo = "https://drive.google.com/uc?export=view&id=1L2jsbl4SpCQqVdQUBwPlycujtR37mY45"
-ruta_imagen_doctor = "https://drive.google.com/uc?export=view&id=1yUfCLkwKjkegmqwUEiYfYOFwIYVHqXeg"
-ruta_imagen_semicirculo = "https://drive.google.com/uc?export=view&id=1E-fWlLo0IqTI6kOjZOtIaL15NFGRXzCs"
+ruta_logo = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731347609/zuazmrkt0vr6zwzlqctd.png"
+ruta_imagen_doctor = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731347868/xpaaazaw9k5xljbnkuxz.png"
+ruta_imagen_semicirculo = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731348165/bafs8tpelvbohobirjrz.png"
 
-ruta_excel=r"C:\Users\david\Flet\Plantilla_Final.xlsx"
+ruta_excel="./Archivos/Plantilla_Final.xlsx"
 
 nombre_doc_global=""
 apellidoP_doc_global=""
