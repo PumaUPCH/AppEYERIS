@@ -674,6 +674,7 @@ def main(page: ft.Page):
             s3_client.head_object(Bucket=bucket_name, Key=archivo_s3)
         
             # Generar URL pública (o firmada) para el archivo
+            url_reporte = f"https://{bucket_name}.s3.us-east-2.amazonaws.com/{archivo_s3}"
             url_reporte = s3_client.generate_presigned_url(
                 'get_object',
                 Params={'Bucket': bucket_name, 'Key': archivo_s3},
