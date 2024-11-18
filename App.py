@@ -414,6 +414,15 @@ def main(page: ft.Page):
             url_img_original = paciente[12]
             url_img_fusionada = paciente[13]
 
+            def visualizar_img_orig(e):
+                page.launch_url(url_img_original)
+
+            def visualizar_img_seg(e):
+                page.launch_url(url_img_fusionada)
+
+            img_orig_button=ft.ElevatedButton("Imagen original",on_click=visualizar_img_orig, bgcolor="#c6d8e3", color="#020202")
+            img_seg_button=ft.ElevatedButton("Imagen segmentada",on_click=visualizar_img_seg, bgcolor="#c6d8e3", color="#020202")
+
             enviar_comentario_button = ft.ElevatedButton("Enviar mensaje", on_click=lambda e: change_route(e, "/mensaje_doc", paciente_id=paciente_id), bgcolor="#c6d8e3", color="#020202")
             volver_lista_button = ft.ElevatedButton("Lista de pacientes", on_click=lambda e: change_route(e, "/lista_pacientes"), bgcolor="#c6d8e3", color="#020202")
 
@@ -434,6 +443,7 @@ def main(page: ft.Page):
                         ft.Divider(),
                         ft.Row([ft.Text("Imagen Original:"), ft.Text("Imagen Segmentada:")], alignment=ft.MainAxisAlignment.CENTER),
                         ft.Row([ft.Image(src=url_img_original, width=150, height=150), ft.Image(src=url_img_fusionada, width=150, height=150)], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Row([img_orig_button,img_seg_button], alignment=ft.MainAxisAlignment.CENTER),
                         ft.Divider(),
                         ft.Row([enviar_comentario_button, volver_lista_button], alignment=ft.MainAxisAlignment.CENTER)
                     ])
