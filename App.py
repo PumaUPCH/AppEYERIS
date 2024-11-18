@@ -6,12 +6,19 @@ import requests  # Necesario para descargar la imagen
 import openpyxl
 import shutil
 import os
+import boto3
+from io import BytesIO
+from botocore.exceptions import NoCredentialsError, ClientError
+
+s3_client = boto3.client('s3')
+bucket_name = 'reporte-pacientes'
+plantilla_excel_key = 'Plantilla_Final.xlsx'
+
+DB_URL="postgresql://root:f0IIV5sVGMalJpeOrNaoy0HwmqIOgN4E@dpg-cspoaaggph6c73do4qjg-a.oregon-postgres.render.com/datos_pacientes"
 
 ruta_logo = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731347609/zuazmrkt0vr6zwzlqctd.png"
 ruta_imagen_doctor = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731347868/xpaaazaw9k5xljbnkuxz.png"
 ruta_imagen_semicirculo = "https://res.cloudinary.com/dmknonkwh/image/upload/v1731348165/bafs8tpelvbohobirjrz.png"
-
-ruta_excel="./Archivos/Plantilla_Final.xlsx"
 
 nombre_doc_global=""
 apellidoP_doc_global=""
@@ -21,25 +28,19 @@ cmp_doc_global=""
 # Conectar a la base de datos PostgreSQL
 def conectar_db():
     try:
-        conn = psycopg2.connect(
-            host="localhost",
-            database="deteccion_glaucoma",
-            user="postgres",
-            password="Blaziken3005"
-        )
+        conn = psycopg2.connect(DB_URL)
         return conn
     except Exception as e:
         print(f"Error al conectar con la base de datos: {e}")
         return None
-    
-# Consultar la lista de pacientes
+
 def obtener_pacientes():
     conn = conectar_db()
     if conn is not None:
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT id, nombre, apellido_paterno, apellido_materno, dni FROM analisis_glaucoma")
-            pacientes = cursor.fetchall()  # Obtiene todos los resultados
+            cursor.execute("SELECT id, nombre, apellido_paterno, apellido_materno, dni FROM pacientes")
+            pacientes = cursor.fetchall()
             cursor.close()
             conn.close()
             return pacientes
@@ -48,15 +49,20 @@ def obtener_pacientes():
             return []
     else:
         return []
-    
+
 # Consultar los resultados de un paciente específico
 def obtener_resultados_paciente(paciente_id):
     conn = conectar_db()
     if conn is not None:
         try:
             cursor = conn.cursor()
-            cursor.execute("SELECT nombre, apellido_paterno, apellido_materno, dni, telefono, sexo,edad,motivo, antecedentes, clasificacion, confiabilidad, vcdr,url_img_original,url_img_fusionada,id,fecha FROM analisis_glaucoma WHERE id = %s", (paciente_id,))
-            paciente = cursor.fetchone()  # Obtiene solo un resultado
+            cursor.execute("""
+                SELECT nombre, apellido_paterno, apellido_materno, dni, telefono, sexo, edad, motivo_consulta, antecedentes_medicos, 
+                       clasificacion, confiabilidad, vcdr, url_imagen_original, url_imagen_segmentada, id, fecha 
+                FROM pacientes 
+                WHERE id = %s
+            """, (paciente_id,))
+            paciente = cursor.fetchone()
             cursor.close()
             conn.close()
             return paciente
@@ -67,12 +73,13 @@ def obtener_resultados_paciente(paciente_id):
         return None
 
 firebaseConfig = {
-    "apiKey": "AIzaSyBkICC3K_4gi6TnRyqXlEUQT2Xwd4K7Z_A",
-    "authDomain": "TU_AUTH_DOMAIN",
-    "projectId": "eyeris-aa22a",
-    "storageBucket": "TU_STORAGE_BUCKET",
-    "messagingSenderId": "TU_MESSAGING_SENDER_ID",
-    "appId": "TU_APP_ID",
+    "apiKey": "AIzaSyB8nCoidFKJv9krwoBbzwIF_ObU3xedwqs",
+    "authDomain": "cuentas-doc.firebaseapp.com",
+    "projectId": "cuentas-doc",
+    "storageBucket": "cuentas-doc.firebasestorage.app",
+    "messagingSenderId": "976170484572",
+    "appId": "1:976170484572:web:b5a14faef0029c185b3799",
+    "measurementId": "G-6XF2442F78",
     "databaseURL": ""  # Deja vacío si no usas Realtime Database
 }
 
@@ -356,11 +363,8 @@ def main(page: ft.Page):
         return View("/inicio_sesion", [main_container])
     
     def lista_pacientes_view():
-        # Obtener los datos de los pacientes de la base de datos
         pacientes = obtener_pacientes()
-
-        # Crear una lista para mostrar la información
-        lista_pacientes = ListView(expand=True, spacing=10, padding=10)
+        lista_pacientes = ft.ListView(expand=True, spacing=10, padding=10)
 
         if pacientes:
             for paciente in pacientes:
@@ -368,43 +372,41 @@ def main(page: ft.Page):
                 nombre_completo = f"{paciente[1]} {paciente[2]} {paciente[3]}"
                 dni = paciente[4]
 
-                # Botón para ver detalles del paciente
-                ver_detalle_button = ElevatedButton(
+                ver_detalle_button = ft.ElevatedButton(
                     f"Ver detalles de {nombre_completo}",
-                    on_click=lambda e, id=paciente_id: change_route(e, "/detalle_paciente", paciente_id=id),bgcolor="#c6d8e3", color="#020202"
+                    on_click=lambda e, id=paciente_id: change_route(e, "/detalle_paciente", paciente_id=id),
+                    bgcolor="#c6d8e3", color="#020202"
                 )
 
-                # Agregar cada paciente a la lista con un botón para acceder a detalles
                 lista_pacientes.controls.append(
                     ft.Container(
                         content=ft.Column([
-                            Text(f"Nombre: {nombre_completo}"),
-                            Text(f"DNI: {dni}"),
+                            ft.Text(f"Nombre: {nombre_completo}"),
+                            ft.Text(f"DNI: {dni}"),
                             ver_detalle_button,
                             ft.Divider()
                         ])
                     )
                 )
         else:
-            lista_pacientes.controls.append(Text("No se encontraron pacientes."))
+            lista_pacientes.controls.append(ft.Text("No se encontraron pacientes."))
 
-        return View("/lista_pacientes", [
-            AppBar(title=Text("Lista de Pacientes")),
+        return ft.View("/lista_pacientes", [
+            ft.AppBar(title=ft.Text("Lista de Pacientes")),
             lista_pacientes,
-            ElevatedButton("Volver al inicio", on_click=lambda e: change_route(e, "/inicio_sesion"),bgcolor="#c6d8e3", color="#020202")
+            ft.ElevatedButton("Volver al inicio", on_click=lambda e: change_route(e, "/inicio_sesion"), bgcolor="#c6d8e3", color="#020202")
         ])
     
     def detalle_paciente_view(paciente_id):
-        # Obtener los detalles del paciente por ID
         paciente = obtener_resultados_paciente(paciente_id)
 
         if paciente:
             nombre_completo = f"{paciente[0]} {paciente[1]} {paciente[2]}"
             dni = paciente[3]
             telefono = paciente[4]
-            sexo=paciente[5]
-            edad=paciente[6]
-            motivo=paciente[7]
+            sexo = paciente[5]
+            edad = paciente[6]
+            motivo = paciente[7]
             antecedentes = paciente[8]
             clasificacion = paciente[9]
             confiabilidad = f"Confiabilidad de resultados: {paciente[10]:.2f}"
@@ -412,40 +414,35 @@ def main(page: ft.Page):
             url_img_original = paciente[12]
             url_img_fusionada = paciente[13]
 
+            enviar_comentario_button = ft.ElevatedButton("Enviar mensaje", on_click=lambda e: change_route(e, "/mensaje_doc", paciente_id=paciente_id), bgcolor="#c6d8e3", color="#020202")
+            volver_lista_button = ft.ElevatedButton("Lista de pacientes", on_click=lambda e: change_route(e, "/lista_pacientes"), bgcolor="#c6d8e3", color="#020202")
 
-            # Botón para enviar comentario
-            enviar_comentario_button = ElevatedButton("Enviar mensaje", on_click=lambda e: change_route(e, "/mensaje_doc", paciente_id=paciente_id),bgcolor="#c6d8e3", color="#020202")
-            # Botón para regresar a la lista de pacientes
-            volver_lista_button = ElevatedButton("Lista de pacientes", on_click=lambda e: change_route(e, "/lista_pacientes"),bgcolor="#c6d8e3", color="#020202")
-
-            return View("/detalle_paciente", [
-                AppBar(title=Text(f"Detalles del Paciente: {nombre_completo}")),
+            return ft.View("/detalle_paciente", [
+                ft.AppBar(title=ft.Text(f"Detalles del Paciente: {nombre_completo}")),
                 ft.Container(
                     content=ft.Column([
-                        Text(f"Nombre: {nombre_completo}"),
-                        Text(f"DNI: {dni}"),
-                        Text(f"Teléfono: {telefono}"),
-                        Text(f"Sexo: {sexo}"),
-                        Text(f"Edad: {edad}"),
-                        Text(f"Motivo: {motivo}"),
-                        Text(f"Antecedentes: {antecedentes}"),
-                        Text(f"Clasificación: {clasificacion}"),
-                        Text(confiabilidad),
-                        Text(vcdr),
-                        Divider(),
-                        # Mostrar imagen original desde la URL
-                        Row([Text("Imagen Original:"),Text("Imagen Segmentada:")],alignment=ft.MainAxisAlignment.CENTER),
-                        Row([Image(src=url_img_original, width=150, height=150),Image(src=url_img_fusionada, width=150, height=150)], alignment=ft.MainAxisAlignment.CENTER),
-
-                        Divider(),
-                        Row([enviar_comentario_button,volver_lista_button], alignment=ft.MainAxisAlignment.CENTER)
+                        ft.Text(f"Nombre: {nombre_completo}"),
+                        ft.Text(f"DNI: {dni}"),
+                        ft.Text(f"Teléfono: {telefono}"),
+                        ft.Text(f"Sexo: {sexo}"),
+                        ft.Text(f"Edad: {edad}"),
+                        ft.Text(f"Motivo: {motivo}"),
+                        ft.Text(f"Antecedentes: {antecedentes}"),
+                        ft.Text(f"Clasificación: {clasificacion}"),
+                        ft.Text(confiabilidad),
+                        ft.Text(vcdr),
+                        ft.Divider(),
+                        ft.Row([ft.Text("Imagen Original:"), ft.Text("Imagen Segmentada:")], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Row([ft.Image(src=url_img_original, width=150, height=150), ft.Image(src=url_img_fusionada, width=150, height=150)], alignment=ft.MainAxisAlignment.CENTER),
+                        ft.Divider(),
+                        ft.Row([enviar_comentario_button, volver_lista_button], alignment=ft.MainAxisAlignment.CENTER)
                     ])
                 )
             ])
         else:
-            return View("/detalle_paciente", [
-                Text("No se encontraron los detalles del paciente."),
-                ElevatedButton("Regresar a la Lista de Pacientes", on_click=lambda e: change_route(e, "/lista_pacientes"),bgcolor="#c6d8e3", color="#020202")
+            return ft.View("/detalle_paciente", [
+                ft.Text("No se encontraron los detalles del paciente."),
+                ft.ElevatedButton("Regresar a la Lista de Pacientes", on_click=lambda e: change_route(e, "/lista_pacientes"), bgcolor="#c6d8e3", color="#020202")
             ])
         
     def enviar_mensaje(paciente_id):
@@ -500,13 +497,12 @@ def main(page: ft.Page):
         )
     
     def generar_reporte(paciente,nombre_doc,apellidoP_doc,apellidoM_doc,cmp_doc,mensaje_doc):
-        nuevo_excel = f"C:\\Users\\david\\Flet\\Reporte_{paciente[3]}.xlsx"  # Crear el nuevo nombre de archivo
+        plantilla_stream = BytesIO()
+        s3_client.download_fileobj(bucket_name, plantilla_excel_key, plantilla_stream)
+        plantilla_stream.seek(0)
 
-        # Copiar la plantilla original para crear un nuevo archivo Excel
-        shutil.copy(ruta_excel, nuevo_excel)
-
-        # Cargar la nueva copia del archivo
-        wb = openpyxl.load_workbook(nuevo_excel)
+        # Crear una copia de la plantilla en memoria
+        wb = openpyxl.load_workbook(plantilla_stream)
         hoja = wb.active
 
         hoja["A6"]=paciente[0]
@@ -529,57 +525,49 @@ def main(page: ft.Page):
         hoja["B23"]=cmp_doc
         hoja["E20"]=mensaje_doc
 
-        img_url = paciente[12]  # URL de la primera imagen
-        img_url_seg = paciente[13]  # URL de la segunda imagen
-
-        # Rutas locales para guardar las imágenes descargadas
-        img_local_path = f"C:\\Users\\david\\Flet\\imagen_paciente_{paciente[3]}.jpeg"
-        img_local_path_seg = f"C:\\Users\\david\\Flet\\imagen_paciente_seg_{paciente[3]}.jpeg"
-
+        # Manejo de imágenes
         try:
-            # Descargar la imagen desde la URL
-            response = requests.get(img_url, stream=True)
-            if response.status_code == 200:
-                with open(img_local_path, 'wb') as f:
-                    f.write(response.content)  # Guardar la imagen en el disco
+            img_url = paciente[12]
+            img_url_seg = paciente[13]
 
-                # Cargar la imagen usando la referencia completa
-                img = openpyxl.drawing.image.Image(img_local_path)  # Usar la ruta completa
+            if img_url:
+                response = requests.get(img_url, stream=True)
+                if response.status_code == 200:
+                    img_data = BytesIO(response.content)
+                    img = openpyxl.drawing.image.Image(img_data)
+                    img.width, img.height = 150, 150
+                    img.anchor = "A15"
+                    hoja.add_image(img)
 
-                # Cambiar el tamaño de la imagen
-                img.width = 150  # Ancho de la imagen en píxeles
-                img.height = 150  # Altura de la imagen en píxeles
-
-                # Establecer la celda donde se insertará la imagen
-                img.anchor = "A15"  # Posición donde colocar la imagen
-                hoja.add_image(img)
-            else:
-                print(f"Error al descargar la imagen: Status Code {response.status_code}")
-
-            response_seg = requests.get(img_url_seg, stream=True)
-            if response_seg.status_code == 200:
-                with open(img_local_path_seg, 'wb') as f:
-                    f.write(response_seg.content)  # Guardar la imagen en el disco
-
-                # Cargar la segunda imagen usando la referencia completa
-                img_seg = openpyxl.drawing.image.Image(img_local_path_seg)
-
-                # Cambiar el tamaño de la segunda imagen
-                img_seg.width = 150
-                img_seg.height = 150
-
-                # Establecer la celda donde se insertará la segunda imagen
-                img_seg.anchor = "D15"  # Posición de la segunda imagen
-                hoja.add_image(img_seg)
-            else:
-                print(f"Error al descargar la imagen segmentada: Status Code {response_seg.status_code}")
+            if img_url_seg:
+                response_seg = requests.get(img_url_seg, stream=True)
+                if response_seg.status_code == 200:
+                    img_seg_data = BytesIO(response_seg.content)
+                    img_seg = openpyxl.drawing.image.Image(img_seg_data)
+                    img_seg.width, img_seg.height = 150, 150
+                    img_seg.anchor = "D15"
+                    hoja.add_image(img_seg)
         except Exception as e:
-            print(f"Error al descargar o insertar la imagen: {e}")
+            print(f"Error al procesar imágenes: {e}")
 
-        wb.save(nuevo_excel)
+        # Guardar el archivo en un stream de bytes
+        nuevo_excel_stream = BytesIO()
+        wb.save(nuevo_excel_stream)
+        nuevo_excel_stream.seek(0)
 
-        # Notificar al usuario que los datos fueron guardados en un nuevo archivo
-        page.dialog = ft.AlertDialog(title=Text(f"Datos guardados en: {nuevo_excel}"))
+        # Subir el archivo a S3 con el nombre basado en el DNI del paciente
+        try:
+            nombre_archivo_s3 = f"{paciente[3]}.xlsx"  # DNI como nombre
+            s3_client.upload_fileobj(
+                nuevo_excel_stream, bucket_name, nombre_archivo_s3,
+                ExtraArgs={'ContentType': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'}
+            )
+            print(f"Reporte subido exitosamente a S3: {nombre_archivo_s3}")
+        except Exception as e:
+            print(f"Error al subir archivo a S3: {e}")
+
+        # Notificar al usuario
+        page.dialog = ft.AlertDialog(title=Text(f"Reporte subido a S3 como: {nombre_archivo_s3}"))
         page.dialog.open = True
         page.update()
 
@@ -678,29 +666,47 @@ def main(page: ft.Page):
         return View("/reporte_pacientes", [main_container])
     
     def mostrar_reporte(dni):
-        # Generar la ruta del archivo de reporte a partir del DNI
-        ruta_reporte = f"C:\\Users\\david\\Flet\\Reporte_{dni}.xlsx"
+        # Generar el nombre del archivo en S3 a partir del DNI
+        archivo_s3 = f"{dni}.xlsx"
     
-        # Verificar si el archivo existe
-        if os.path.exists(ruta_reporte):
-            # Mostrar un diálogo notificando al usuario que el archivo está siendo descargado
+        try:
+            # Verificar si el archivo existe en S3
+            s3_client.head_object(Bucket=bucket_name, Key=archivo_s3)
+        
+            # Generar URL pública (o firmada) para el archivo
+            url_reporte = s3_client.generate_presigned_url(
+                'get_object',
+                Params={'Bucket': bucket_name, 'Key': archivo_s3},
+                ExpiresIn=3600  # URL válida por 1 hora
+            )
+
+            # Mostrar un diálogo notificando al usuario que el archivo está disponible
             dialog = ft.AlertDialog(
-                title=ft.Text(f"Descargando el reporte para el DNI: {dni}"),
-                on_dismiss=lambda e: print("Descarga en progreso...")
+                title=ft.Text(f"El reporte para el DNI: {dni} está disponible."),
+                on_dismiss=lambda e: print("Descargando el reporte...")
             )
             page.overlay.append(dialog)
             page.update()
 
-            # Usar launch_url para abrir el archivo y que el navegador lo descargue
-            page.launch_url(f"file:///{ruta_reporte}")  # Abrir el archivo en el navegador
-        else:
-            # Si el archivo no existe, mostrar un mensaje de error
-            dialog = ft.AlertDialog(
-                title=ft.Text(f"No se encontró ningún reporte para el DNI: {dni}"),
-                on_dismiss=lambda e: print("Error: Archivo no encontrado.")
-            )
+            # Abrir el enlace en el navegador
+            page.launch_url(url_reporte)
+
+        except ClientError as e:
+            # Manejar el caso en que el archivo no existe o hay un error en S3
+            if e.response['Error']['Code'] == "404":
+                dialog = ft.AlertDialog(
+                    title=ft.Text(f"No se encontró ningún reporte para el DNI: {dni}"),
+                    on_dismiss=lambda e: print("Error: Archivo no encontrado en S3.")
+                )
+            else:
+                dialog = ft.AlertDialog(
+                    title=ft.Text(f"Error al buscar el reporte: {e.response['Error']['Message']}"),
+                    on_dismiss=lambda e: print("Error: Problema con S3.")
+                )
             page.overlay.append(dialog)
             page.update()
+        except NoCredentialsError:
+            print("Error: Credenciales de AWS no configuradas correctamente.")
     
 
 
