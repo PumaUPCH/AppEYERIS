@@ -86,6 +86,19 @@ firebaseConfig = {
 firebase = pyrebase.initialize_app(firebaseConfig)
 auth = firebase.auth()
 
+firebaseConfig2 = {
+    "apiKey": "AIzaSyBZeWDzJHK0WTBz8gbd3eJ0Id7E2HGTJVg",
+    "authDomain": "eyeris-12d64.firebaseapp.com",
+    "projectId": "eyeris-12d64",
+    "storageBucket": "eyeris-12d64.firebasestorage.app",
+    "messagingSenderId": "896473047249",
+    "appId": "1:896473047249:web:d4ee75c21ae949598225f0",
+    "databaseURL": ""
+}
+
+firebase2 = pyrebase.initialize_app(firebaseConfig2)
+auth2 = firebase2.auth()
+
 def main(page: ft.Page):
     page.title = "Aplicación EYERIS"
     page.window.width = 390
@@ -133,22 +146,29 @@ def main(page: ft.Page):
             email_value = email.value
             password_value = password.value
             try:
-                user = auth.sign_in_with_email_and_password(email_value, password_value)
-                user_info = auth.get_account_info(user['idToken'])
-                email_verified = user_info['users'][0]['emailVerified']
-
-                if email_verified:
-                    if boton_doc_tec.value == "Doctor":
-                        change_route(e, "/inicio_sesion")
-                    elif boton_doc_tec.value == "Personal de salud":
-                        change_route(e, "/inicio_sesion_previo")
+                if boton_doc_tec.value=="Doctor":
+                    user=auth.sign_in_with_email_and_password(email_value,password_value)
+                    user_info=auth.get_account_info(user['idToken'])
+                    email_verified=user_info['users'][0]['emailVerified']
+                    if email_verified:
+                        change_route(e,"/inicio_sesion")
                     else:
-                        # Mostrar mensaje si no se seleccionó ninguna opción
-                        page.snack_bar = ft.SnackBar(ft.Text("Por favor, selecciona una opción válida."))
+                        page.snack_bar = ft.SnackBar(ft.Text("Por favor, verifica tu correo antes de iniciar sesión."))
+                        page.snack_bar.open = True
+                        page.update()
+                elif boton_doc_tec.value=="Personal de salud":
+                    user=auth2.sign_in_with_email_and_password(email_value,password_value)
+                    user_info=auth2.get_account_info(user['idToken'])
+                    email_verified=user_info['users'][0]['emailVerified']
+                    if email_verified:
+                        change_route(e,"/inicio_sesion_previo")
+                    else:
+                        page.snack_bar = ft.SnackBar(ft.Text("Por favor, verifica tu correo antes de iniciar sesión."))
                         page.snack_bar.open = True
                         page.update()
                 else:
-                    page.snack_bar = ft.SnackBar(ft.Text("Por favor, verifica tu correo antes de iniciar sesión."))
+                    # Mostrar mensaje si no se seleccionó ninguna opción
+                    page.snack_bar = ft.SnackBar(ft.Text("Por favor, selecciona una opción válida."))
                     page.snack_bar.open = True
                     page.update()
             except Exception as ex:
@@ -225,13 +245,27 @@ def main(page: ft.Page):
                 page.update()
             else:
                 try:
-                    user = auth.create_user_with_email_and_password(email_value, password_value)
-                    # Aquí puedes agregar lógica adicional, como almacenar más datos en Firestore
-                    auth.send_email_verification(user['idToken'])
-                    page.snack_bar = ft.SnackBar(ft.Text("Registro exitoso. Verifica tu correo para activar tu cuenta."))
-                    page.snack_bar.open = True
-                    page.update()
-                    change_route(e, "/inicio")  # Redirigir a inicio de sesión
+                    if boton_doc_tec.value=="Doctor":
+                        user = auth.create_user_with_email_and_password(email_value, password_value)
+                        # Aquí puedes agregar lógica adicional, como almacenar más datos en Firestore
+                        auth.send_email_verification(user['idToken'])
+                        page.snack_bar = ft.SnackBar(ft.Text("Registro exitoso. Verifica tu correo para activar tu cuenta."))
+                        page.snack_bar.open = True
+                        page.update()
+                        change_route(e, "/inicio")  # Redirigir a inicio de sesión
+                    elif boton_doc_tec.value=="Personal de salud":
+                        user = auth2.create_user_with_email_and_password(email_value, password_value)
+                        # Aquí puedes agregar lógica adicional, como almacenar más datos en Firestore
+                        auth2.send_email_verification(user['idToken'])
+                        page.snack_bar = ft.SnackBar(ft.Text("Registro exitoso. Verifica tu correo para activar tu cuenta."))
+                        page.snack_bar.open = True
+                        page.update()
+                        change_route(e, "/inicio")  # Redirigir a inicio de sesión
+                    else:
+                        # Mostrar mensaje si no se seleccionó ninguna opción
+                        page.snack_bar = ft.SnackBar(ft.Text("Por favor, selecciona una opción válida."))
+                        page.snack_bar.open = True
+                        page.update()
                 except Exception as ex:
                     error_snackbar = ft.SnackBar(ft.Text("Error al registrarse: " + str(ex)), open=True)
                     page.overlay.append(error_snackbar)
@@ -300,15 +334,20 @@ def main(page: ft.Page):
             apellidoP_doc_global = apellidoP_doc.value
             apellidoM_doc_global = apellidoM_doc.value
             cmp_doc_global = cmp_doc.value
-            change_route(e, "/lista_pacientes")
+            if nombre_doc_global and apellidoP_doc_global and apellidoM_doc_global and cmp_doc_global:
+                change_route(e, "/lista_pacientes")
+            else:
+                page.snack_bar = ft.SnackBar(ft.Text("Falta de datos por completar. Ingrese todos los datos."))
+                page.snack_bar.open = True
+                page.update()
 
         # Botones
-        save_button = ElevatedButton("Iniciar sesión", on_click=guardar_datos_doctor, bgcolor="#c6d8e3", color="#020202")
+        save_button = ElevatedButton("Ver pacientes", on_click=guardar_datos_doctor, bgcolor="#c6d8e3", color="#020202")
 
         # Título
         titulo = Container(
             content=Text(
-                "Inicio de sesión",
+                "Ingreso de datos",
                 size=30,  # Tamaño del texto
                 weight="bold",  # Texto en negrita
                 color="#000000",  # Color del texto
@@ -535,30 +574,8 @@ def main(page: ft.Page):
         hoja["B23"]=cmp_doc
         hoja["E20"]=mensaje_doc
 
-        # Manejo de imágenes
-        try:
-            img_url = paciente[12]
-            img_url_seg = paciente[13]
-
-            if img_url:
-                response = requests.get(img_url, stream=True)
-                if response.status_code == 200:
-                    img_data = BytesIO(response.content)
-                    img = openpyxl.drawing.image.Image(img_data)
-                    img.width, img.height = 150, 150
-                    img.anchor = "A15"
-                    hoja.add_image(img)
-
-            if img_url_seg:
-                response_seg = requests.get(img_url_seg, stream=True)
-                if response_seg.status_code == 200:
-                    img_seg_data = BytesIO(response_seg.content)
-                    img_seg = openpyxl.drawing.image.Image(img_seg_data)
-                    img_seg.width, img_seg.height = 150, 150
-                    img_seg.anchor = "D15"
-                    hoja.add_image(img_seg)
-        except Exception as e:
-            print(f"Error al procesar imágenes: {e}")
+        hoja["A15"]=paciente[12]
+        hoja["D15"]=paciente[13]
 
         # Guardar el archivo en un stream de bytes
         nuevo_excel_stream = BytesIO()
@@ -644,7 +661,7 @@ def main(page: ft.Page):
     ])
 
     def ingreso():
-        page.launch_url("http://10.100.196.153:8501")
+        page.launch_url("http://192.168.1.40:8501")
 
     def reporte_pacientes():
 
