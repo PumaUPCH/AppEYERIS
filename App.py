@@ -661,7 +661,7 @@ def main(page: ft.Page):
     ])
 
     def ingreso():
-        page.launch_url("http://10.100.195.180:8501")
+        page.launch_url("http://192.168.1.36:8501")
 
     def reporte_pacientes():
 
